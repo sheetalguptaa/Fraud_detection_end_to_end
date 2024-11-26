@@ -1,17 +1,19 @@
 import streamlit as st
 import mysql.connector
-import pickle
+import joblib  # Updated from pickle to joblib for better compatibility
 import numpy as np
 
 # Load the trained model
 @st.cache_resource
 def load_model():
     try:
-        with open('model.pkl', 'rb') as file:
-            model = pickle.load(file)
+        model = joblib.load("model.pkl")  # Updated to joblib
         return model
     except FileNotFoundError:
         st.error("Trained model file 'model.pkl' not found.")
+        return None
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
         return None
 
 # Function to connect to MySQL
@@ -116,29 +118,32 @@ st.markdown("---")
 if st.button("🔍 Predict"):
     if model:
         # Prepare input data
-        input_data = np.array([[
+        input_data = np.array([[ 
             credit_limit, available_money, transaction_amount, current_balance,
             card_present_numeric, expiration_date_key_in_match_numeric,
             money_left, current_balance_percentage, credit_usage_ratio, transaction_to_balance_ratio
         ]])
 
         # Make prediction
-        prediction = model.predict(input_data)
-        result = "🛑 Fraudulent Transaction" if prediction[0] == 1 else "✅ Legitimate Transaction"
+        try:
+            prediction = model.predict(input_data)
+            result = "🛑 Fraudulent Transaction" if prediction[0] == 1 else "✅ Legitimate Transaction"
 
-        # Display result
-        st.success(f"Prediction: {result}")
+            # Display result
+            st.success(f"Prediction: {result}")
 
-        # Save to database
-        conn = connect_to_db()
-        if conn:
-            db_data = (
-                credit_limit, available_money, transaction_amount, current_balance,
-                card_present_numeric, expiration_date_key_in_match_numeric,
-                money_left, current_balance_percentage, credit_usage_ratio, transaction_to_balance_ratio,
-                result
-            )
-            insert_to_db(conn, db_data)
-            conn.close()
+            # Save to database
+            conn = connect_to_db()
+            if conn:
+                db_data = (
+                    credit_limit, available_money, transaction_amount, current_balance,
+                    card_present_numeric, expiration_date_key_in_match_numeric,
+                    money_left, current_balance_percentage, credit_usage_ratio, transaction_to_balance_ratio,
+                    result
+                )
+                insert_to_db(conn, db_data)
+                conn.close()
+        except Exception as e:
+            st.error(f"Error during prediction: {e}")
     else:
         st.error("Model not loaded. Please ensure 'model.pkl' is in the app directory.")
