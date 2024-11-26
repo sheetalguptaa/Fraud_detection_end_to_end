@@ -9,3 +9,6 @@ mysql-connector-python==8.0.23
 gdown==4.4.0
 streamlit==1.20.0
 cython==0.29.36
+
+
+distlib
